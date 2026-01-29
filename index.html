@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script src="./firebase-config.js"></script>
+
+<script>
+    // Firebase 초기화
+    if (typeof firebaseConfig !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동글동글 새싹 한자방</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+        :root {
+            --board-bg: #2d5a27; 
+            --board-border: #8d5524; 
+            --chalk-white: #ffffff;
+            --chalk-yellow: #f1c40f;
+            --selected-bg: #fff9c4;
+            --main-btn-bg: #cddc39; 
+            --main-btn-dark: #afb42b;
+            --chalk-aqua: #a2d9ce;
+            --prev-btn-bg: #ffb74d;
+            --prev-btn-dark: #f57c00;
+            /* 파스텔톤 버튼 색상 정의 */
+            --start-btn-bg: #a1d6e2; /* 파스텔 하늘 */
+            --start-btn-dark: #7fbbc9;
+            --best-btn-bg: #f4c2c2; /* 파스텔 분홍 */
+            --best-btn-dark: #e0a3a3;
+            --home-btn-bg: #fdfd96; /* 옅은 노란색 */
+            --home-btn-dark: #e6e681;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #e9e4d4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100dvh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        #game-container {
+            background-color: var(--board-bg);
+            width: 100%;
+            max-width: 650px;
+            padding: 30px 20px;
+            border: 12px solid var(--board-border);
+            border-radius: 40px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 15px 30px rgba(0,0,0,0.3);
+            color: var(--chalk-white);
+            text-align: center;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        /* Ver 표시용 스타일 */
+        .ver-info {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: var(--chalk-white);
+            font-family: sans-serif; /* 고딕체 */
+            font-size: calc(1rem - 3pt);
+            opacity: 0.8;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        h1 { color: var(--chalk-yellow); font-size: 2.2rem; margin-bottom: 20px; word-break: keep-all; }
+        
+        .nickname-input {
+            width: 85%;
+            padding: 12px;
+            border-radius: 15px;
+            border: 3px solid var(--chalk-yellow);
+            font-family: 'Jua', sans-serif;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* 변경사항 출력용 스타일 */
+        .history-info {
+            margin-top: 40px;
+            color: var(--chalk-white);
+            font-family: sans-serif; /* 고딕체 */
+            font-size: calc(1rem - 3pt);
+            line-height: 1.4;
+        }
+	/* 제목과 내용 사이의 특정 간격 추가 */
+	.history-info div:first-child {
+	    margin-bottom: 12px; /* 이 숫자를 키울수록 간격이 넓어집니다 */
+	    font-weight: bold;
+	}
+
+        .kanji-display {
+            font-size: 4.5rem;
+            margin: 10px 0 20px 0;
+            color: var(--chalk-white);
+            letter-spacing: 5px;
+            min-height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mode-selection {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .mode-btn {
+            background: white;
+            color: #333;
+            border: 3px solid var(--chalk-white);
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            font-family: 'Jua', sans-serif;
+        }
+
+        .mode-btn.selected {
+            background: var(--selected-bg);
+            border: 3px solid var(--chalk-yellow);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        @media (min-width: 480px) {
+            .btn-group { grid-template-columns: repeat(3, 1fr); }
+            .kanji-display { font-size: 6rem; }
+            h1 { font-size: 3rem; }
+        }
+
+        button.option-btn {
+            font-family: 'Jua', sans-serif;
+            padding: 12px;
+            background: transparent;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+
+        #group-reading .option-btn {
+            border: 3px solid var(--chalk-white);
+            color: var(--chalk-white);
+            font-size: calc(1.1rem + 2pt);
+        }
+
+        #group-meaning .option-btn {
+            border: 3px solid var(--chalk-yellow);
+            color: var(--chalk-yellow);
+        }
+
+        button.option-btn.selected {
+            background: var(--selected-bg) !important;
+            color: #333 !important;
+            border-color: var(--selected-bg) !important;
+            transform: scale(1.03);
+        }
+
+        .confirm-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.4rem;
+            margin-top: 15px;
+            cursor: pointer;
+            font-family: 'Jua', sans-serif;
+        }
+
+        .start-btn { background: var(--start-btn-bg); box-shadow: 0 6px 0 var(--start-btn-dark); color: #333; }
+        .best-btn { background: var(--best-btn-bg); box-shadow: 0 6px 0 var(--best-btn-dark); color: #333; }
+        .home-btn { background: var(--home-btn-bg); box-shadow: 0 6px 0 var(--home-btn-dark); color: #333; }
+        
+        .sub-btn { 
+            background: var(--prev-btn-bg) !important; 
+            box-shadow: 0 6px 0 var(--prev-btn-dark) !important; 
+            font-size: 1.4rem !important; 
+            margin-top: 10px; 
+        }
+
+        .side-by-side { display: flex; gap: 10px; justify-content: center; }
+        .confirm-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+
+        .list-container {
+            text-align: left;
+            max-height: 350px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 25px;
+            margin-bottom: 10px;
+        }
+
+        .list-item {
+            padding: 12px;
+            border-bottom: 2px dashed rgba(255,255,255,0.2);
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stars { color: var(--chalk-yellow); font-size: 1rem; }
+        .result-score { font-size: 3.5rem; color: var(--chalk-yellow); margin: 15px 0; }
+        .week-info { font-size: 0.9rem; color: var(--chalk-aqua); margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="ver-info">Ver.2026-01-29</div>
+
+    <div id="screen-home" class="screen active">
+        <h1>🌱 새싹 한자방</h1>
+        <input type="text" id="nickname" class="nickname-input" placeholder="닉네임을 입력하세요" maxlength="10" list="nickname-list">
+        <datalist id="nickname-list"></datalist>
+        
+        <p>몇 문제를 풀고 싶나요?</p>
+        <div class="mode-selection">
+            <button class="mode-btn selected" onclick="selectCount(15, this)">15문제</button>
+            <button class="mode-btn" onclick="selectCount(20, this)">20문제</button>
+        </div>
+        <button class="confirm-btn start-btn" onclick="startGame()">공부 시작!</button>
+        <button class="confirm-btn best-btn" onclick="showHistory()">이번 주의 모범생</button>
+        
+        <div class="history-info">
+            <div>| 변경사항 |</div>
+            <div id="history-content-text"></div>
+        </div>
+    </div>
+
+    <div id="screen-history" class="screen">
+        <h2 id="history-title">이번 주의 모범생</h2>
+        <div id="current-week-display" class="week-info"></div>
+        <div class="list-container" id="history-content"></div>
+        <div class="side-by-side" id="history-buttons">
+            <button class="confirm-btn sub-btn" id="btn-prev-history" onclick="showPreviousHistory()">역대 모범생</button>
+            <button class="confirm-btn best-btn" id="btn-back-to-history" style="display:none;" onclick="showHistory()">돌아가기</button>
+            <button class="confirm-btn home-btn" onclick="showScreen('screen-home')">대문으로</button>
+        </div>
+    </div>
+
+    <div id="screen-play" class="screen">
+        <div id="progress" style="color: var(--chalk-yellow); font-size: 1.2rem; margin-bottom: 10px;"></div>
+        <div class="kanji-display" id="current-kanji"></div>
+        <div class="btn-group" id="group-reading"></div>
+        <div class="btn-group" id="group-meaning"></div>
+        <button id="btn-confirm" class="confirm-btn start-btn" disabled onclick="handleConfirm()">확인했습니다!</button>
+    </div>
+
+    <div id="screen-review" class="screen">
+        <h2>수정할 게 있나요?</h2>
+        <div class="list-container review-list" id="review-content"></div>
+        <button class="confirm-btn start-btn" onclick="processReview()">정답 확인하기</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2 style="font-size: 2rem;">채점 완료!</h2>
+        <div id="user-result-msg" style="font-size: 1.1rem; margin-bottom: 10px; color: var(--chalk-yellow);"></div>
+        <div class="result-score" id="final-score"></div>
+        <p id="result-status-msg" style="font-size: 1.2rem;"></p>
+        <div class="side-by-side">
+            <button class="confirm-btn best-btn" onclick="showHistory()">이번 주의 모범생</button>
+            <button class="confirm-btn home-btn" onclick="location.reload()">대문으로</button>
+        </div>
+    </div>
+</div>
+
+<script src="./data.js"></script>
+<script src="./history.js"></script>
+
+<script>
+    let userNickname = "";
+    let problemCount = 15;
+    let currentQuestions = [];
+    let userAnswers = [];
+    let currentIndex = 0;
+    let isEditing = false;
+    let initialTotalCount = 0;
+
+    window.onload = function() {
+        updateNicknameDatalist();
+        if (typeof gameHistoryText !== 'undefined') {
+            document.getElementById('history-content-text').innerText = gameHistoryText;
+        } else {
+            document.getElementById('history-content-text').innerText = "기록을 불러올 수 없습니다.";
+        }
+    };
+
+    // Firebase를 사용하여 닉네임 리스트 업데이트
+    async function updateNicknameDatalist() {
+        const snapshot = await db.collection("hanja_history").get();
+        const names = [...new Set(snapshot.docs.map(doc => doc.data().name))];
+        const datalist = document.getElementById('nickname-list');
+        datalist.innerHTML = '';
+        names.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            datalist.appendChild(opt);
+        });
+    }
+
+    function startGame() {
+        const targetData = window.masterData || (typeof masterData !== 'undefined' ? masterData : null);
+        if (!targetData || targetData.length === 0) {
+            alert("한자 데이터(data.js)를 찾을 수 없습니다.");
+            return;
+        }
+        const nicknameInput = document.getElementById('nickname').value.trim();
+        if (!nicknameInput) {
+            alert("닉네임을 입력해주세요!");
+            return;
+        }
+        userNickname = nicknameInput.substring(0, 10);
+        const shuffled = [...targetData].sort(() => Math.random() - 0.5);
+        currentQuestions = shuffled.slice(0, problemCount).map(q => ({
+            ...q, displayType: Math.random() < 0.5 ? 'kanji' : 'reading'
+        }));
+        initialTotalCount = currentQuestions.length;
+        userAnswers = currentQuestions.map(() => ({ reading: '', meaning: '' }));
+        currentIndex = 0;
+        loadQuestion();
+        showScreen('screen-play'); 
+    }
+
+    function getWeekInfo(date) {
+        const d = new Date(date);
+        const day = d.getDay(); 
+        const diffToMon = d.getDate() - (day === 0 ? 6 : day - 1);
+        const mon = new Date(d.setDate(diffToMon));
+        const sun = new Date(d.setDate(diffToMon + 6));
+        const firstDayOfYear = new Date(mon.getFullYear(), 0, 1);
+        const pastDaysOfYear = (mon - firstDayOfYear) / 86400000;
+        const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay()) / 7);
+        const formatDate = (date) => date.toISOString().split('T')[0];
+        return {
+            year: mon.getFullYear(), week: weekNum,
+            range: `${formatDate(mon)} ~ ${formatDate(sun)}`,
+            id: `${mon.getFullYear()}-${weekNum}`,
+            monday: mon, sunday: sun
+        };
+    }
+
+    function selectCount(count, btn) {
+        problemCount = count;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function loadQuestion() {
+        const q = currentQuestions[currentIndex];
+        const targetData = window.masterData || masterData;
+        document.getElementById('progress').innerText = `${currentIndex + 1} / ${currentQuestions.length}번`;
+        document.getElementById('current-kanji').innerText = q.displayType === 'kanji' ? q.q : q.r;
+        
+        const correctText = q.displayType === 'kanji' ? q.r : q.q;
+        
+        let similarOptions = targetData.filter(d => {
+            const text = q.displayType === 'kanji' ? d.r : d.q;
+            if (text === correctText) return false;
+            if (text.length !== correctText.length) return false;
+            return [...correctText].some(char => text.includes(char));
+        });
+
+        if (similarOptions.length < 2) {
+            const lengthOptions = targetData.filter(d => {
+                const text = q.displayType === 'kanji' ? d.r : d.q;
+                return text !== correctText && text.length === correctText.length;
+            });
+            similarOptions = [...new Set([...similarOptions, ...lengthOptions])];
+        }
+
+        if (similarOptions.length < 2) {
+            similarOptions = targetData.filter(d => (q.displayType === 'kanji' ? d.r : d.q) !== correctText);
+        }
+
+        const rOptions = shuffle([correctText, ...shuffle(similarOptions).slice(0, 2).map(d => q.displayType === 'kanji' ? d.r : d.q)]);
+        const correctM = q.m;
+        const mOptions = shuffle([correctM, ...shuffle(targetData.filter(d => d.m !== correctM)).slice(0, 2).map(d => d.m)]);
+        
+        renderBtns('group-reading', rOptions, 'reading');
+        renderBtns('group-meaning', mOptions, 'meaning');
+        updateConfirmBtn();
+    }
+
+    function renderBtns(id, opts, type) {
+        const container = document.getElementById(id);
+        container.innerHTML = '';
+        opts.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            if (userAnswers[currentIndex] && userAnswers[currentIndex][type] === opt) btn.classList.add('selected');
+            btn.onclick = () => {
+                userAnswers[currentIndex][type] = opt;
+                Array.from(container.children).forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                updateConfirmBtn();
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function updateConfirmBtn() {
+        const ans = userAnswers[currentIndex];
+        document.getElementById('btn-confirm').disabled = !(ans.reading && ans.meaning);
+    }
+
+    function handleConfirm() {
+        if (isEditing) { isEditing = false; showReview(); }
+        else if (currentIndex < currentQuestions.length - 1) { currentIndex++; loadQuestion(); }
+        else { showReview(); }
+    }
+
+    function showReview() {
+        showScreen('screen-review');
+        const container = document.getElementById('review-content');
+        container.innerHTML = '';
+        currentQuestions.forEach((q, i) => {
+            const div = document.createElement('div');
+            div.className = 'list-item review-item';
+            const displayTitle = q.displayType === 'kanji' ? q.q : q.r;
+            div.innerHTML = `<div><strong>${i+1}. ${displayTitle}</strong><br>나의 선택 : ${userAnswers[i].reading}/${userAnswers[i].meaning}</div>`;
+            div.onclick = () => { currentIndex = i; isEditing = true; showScreen('screen-play'); loadQuestion(); };
+            container.appendChild(div);
+        });
+    }
+
+    function processReview() {
+        const wrongs = currentQuestions.filter((q, i) => {
+            const correctText = q.displayType === 'kanji' ? q.r : q.q;
+            return userAnswers[i].reading !== correctText || userAnswers[i].meaning !== q.m;
+        });
+        if (wrongs.length > 0) {
+            alert(`틀린 문제가 ${wrongs.length}개 있습니다.`);
+            currentQuestions = wrongs; userAnswers = wrongs.map(() => ({ reading: '', meaning: '' }));
+            currentIndex = 0; loadQuestion(); showScreen('screen-play');
+        } else { showResult(); }
+    }
+
+    async function showResult() {
+        showScreen('screen-result');
+        const week = getWeekInfo(new Date());
+        
+        // Firebase에서 주간 누적 데이터 계산
+        const snapshot = await db.collection("hanja_history")
+                                 .where("name", "==", userNickname)
+                                 .where("weekId", "==", week.id)
+                                 .get();
+        
+        let weekTotal = initialTotalCount;
+        snapshot.forEach(doc => { weekTotal += doc.data().total; });
+        
+        document.getElementById('user-result-msg').innerText = `${userNickname}님은 이번 판에 총 ${initialTotalCount}문제, 이번 주에 총 ${weekTotal}문제를 풀었습니다!`;
+        document.getElementById('final-score').innerText = `${initialTotalCount} / ${initialTotalCount}`;
+        document.getElementById('result-status-msg').innerText = "만점입니다! 정말 대단해요!";
+        
+        saveRecord(initialTotalCount, initialTotalCount);
+        updateNicknameDatalist();
+    }
+
+    async function saveRecord(score, total) {
+        const now = new Date();
+        const week = getWeekInfo(now);
+        
+        await db.collection("hanja_history").add({
+            name: userNickname,
+            score: score,
+            total: total,
+            weekId: week.id,
+            weekStr: `${week.year}년 ${week.week}주차`,
+            weekRange: week.range,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    async function showHistory() {
+        showScreen('screen-history');
+        document.getElementById('history-title').innerText = "이번 주의 모범생";
+        document.getElementById('btn-prev-history').style.display = 'block';
+        document.getElementById('btn-back-to-history').style.display = 'none';
+        
+        const week = getWeekInfo(new Date());
+        document.getElementById('current-week-display').innerText = `${week.year}년 ${week.week}주차 (${week.range})`;
+
+        // Firebase에서 현재 주차 데이터만 가져오기
+        const snapshot = await db.collection("hanja_history").where("weekId", "==", week.id).get();
+        
+        const summary = {};
+        snapshot.forEach(doc => {
+            const item = doc.data();
+            if (!summary[item.name]) summary[item.name] = { score: 0, total: 0, weekStr: item.weekStr };
+            summary[item.name].score += item.score;
+            summary[item.name].total += item.total;
+        });
+
+        renderRankList(Object.entries(summary).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.total - a.total));
+    }
+
+    function renderRankList(list) {
+        const container = document.getElementById('history-content');
+        container.innerHTML = list.length === 0 ? '<div class="list-item">기록이 없습니다.</div>' : '';
+        list.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            let stars = index === 0 ? '⭐⭐⭐' : index === 1 ? '⭐⭐' : index === 2 ? '⭐' : '';
+            div.innerHTML = `<div>📅 ${item.weekStr} | 🏷️ ${item.name} | 🎯 ${item.total}문 중 ${item.score}개 성공!</div><div class="stars">${stars}</div>`;
+            container.appendChild(div);
+        });
+    }
+
+    async function showPreviousHistory() {
+        const currentWeek = getWeekInfo(new Date());
+        
+        // Firebase에서 현재 주차를 제외한 모든 데이터 가져오기
+        const snapshot = await db.collection("hanja_history").orderBy("timestamp", "desc").get();
+        const allHistory = snapshot.docs.map(doc => doc.data()).filter(item => item.weekId !== currentWeek.id);
+
+        if (allHistory.length === 0) { alert("이전 기록이 없습니다."); return; }
+        
+        document.getElementById('history-title').innerText = "역대 모범생";
+        document.getElementById('btn-prev-history').style.display = 'none';
+        document.getElementById('btn-back-to-history').style.display = 'block';
+
+        const sortedWeekIds = [...new Set(allHistory.map(item => item.weekId))].slice(0, 10);
+        const container = document.getElementById('history-content');
+        container.innerHTML = '';
+        
+        sortedWeekIds.forEach(wid => {
+            const weekData = allHistory.filter(h => h.weekId === wid);
+            const summary = {};
+            weekData.forEach(item => {
+                if (!summary[item.name]) summary[item.name] = { score: 0, total: 0, weekStr: item.weekStr };
+                summary[item.name].score += item.score;
+                summary[item.name].total += item.total;
+            });
+            Object.entries(summary).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.total - a.total).slice(0, 3).forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                let stars = index === 0 ? '⭐⭐⭐' : index === 1 ? '⭐⭐' : index === 2 ? '⭐' : '';
+                div.innerHTML = `<div>📅 ${item.weekStr} | 🏷️ ${item.name} | 🎯 ${item.total}문 중 ${item.score}개 성공!</div><div class="stars">${stars}</div>`;
+                container.appendChild(div);
+            });
+        });
+    }
+
+    function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
+    function retryWrong() { processReview(); }
+</script>
+</body>
+</html>
