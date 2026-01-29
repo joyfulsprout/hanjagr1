@@ -11,14 +11,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Create Env Script
-        run: |
-          echo "window.env = {
-            FIREBASE_API_KEY: '${{ secrets.FIREBASE_API_KEY }}',
-            FIREBASE_AUTH_DOMAIN: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
-            FIREBASE_PROJECT_ID: '${{ secrets.FIREBASE_PROJECT_ID }}',
-            FIREBASE_APP_ID: '${{ secrets.FIREBASE_APP_ID }}'
-          };" > env-config.js
+      - name: Replace Secrets
+          run: |
+          # 기존의 sed 명령어를 다 지우고 아래 내용으로 바꾸세요.
+          # 구분자를 | 대신 @를 사용하여 특수문자 충돌을 방지합니다.
+          sed -i "s@FIREBASE_API_KEY_PLACEHOLDER@${{ secrets.FIREBASE_API_KEY }}@g" firebase-config.js
+          sed -i "s@FIREBASE_AUTH_DOMAIN_PLACEHOLDER@${{ secrets.FIREBASE_AUTH_DOMAIN }}@g" firebase-config.js
+          sed -i "s@FIREBASE_PROJECT_ID_PLACEHOLDER@${{ secrets.FIREBASE_PROJECT_ID }}@g" firebase-config.js
+          sed -i "s@FIREBASE_APP_ID_PLACEHOLDER@${{ secrets.FIREBASE_APP_ID }}@g" firebase-config.js
+
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
