@@ -1,25 +1,28 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-
+	
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
 <script src="./firebase-config.js"></script>
 
 <script>
-    // firebaseConfig가 로드되었는지 확인 후 초기화 진행
-    if (typeof firebaseConfig !== 'undefined') {
-        // 중복 초기화 방지
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+    var db; // 전역 변수 선언
+    
+    // 안전한 초기화 과정
+    try {
+        if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "") {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.firestore();
+            console.log("Firebase 연결 성공!");
+        } else {
+            throw new Error("firebaseConfig 미정의");
         }
-    } else {
-        console.error("firebaseConfig를 찾을 수 없습니다. 배포 설정을 확인하세요.");
+    } catch (e) {
+        console.error("Firebase 초기화 실패:", e.message);
     }
-
-    // 전역 변수 db 선언 (하단 게임 로직에서 사용)
-    var db = firebase.firestore();
 </script>
 
     <meta charset="UTF-8">
@@ -590,5 +593,6 @@
 </body>
 
 </html>
+
 
 
