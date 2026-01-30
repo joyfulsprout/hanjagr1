@@ -284,7 +284,10 @@
 
     <div id="screen-home" class="screen active">
         <h1>🌱 새싹 한자방</h1>
-        <input type="text" id="nickname" class="nickname-input" placeholder="닉네임을 입력하세요" maxlength="10" list="nickname-list">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <input type="text" id="nickname" class="nickname-input" placeholder="아이디 (10자 이내)" maxlength="10" list="nickname-list" style="margin-bottom: 5px;">
+            <input type="password" id="password" class="nickname-input" placeholder="비밀번호 (숫자 4자리)" maxlength="4" style="margin-bottom: 20px;">
+        </div>
         <datalist id="nickname-list"></datalist>
         
         <p>몇 문제를 풀고 싶나요?</p>
@@ -292,7 +295,7 @@
             <button class="mode-btn selected" onclick="selectCount(15, this)">15문제</button>
             <button class="mode-btn" onclick="selectCount(20, this)">20문제</button>
         </div>
-        <button class="confirm-btn start-btn" onclick="startGame()">공부 시작!</button>
+        <button class="confirm-btn start-btn" onclick="authAndStart()">공부 시작!</button>
         <button class="confirm-btn best-btn" onclick="showHistory()">이번 주의 모범생</button>
         
         <div class="history-info">
@@ -350,18 +353,57 @@
     let isEditing = false;
     let initialTotalCount = 0;
 
+    // 아이디/비밀번호 인증 후 게임 시작
+    async function authAndStart() {
+        const idInput = document.getElementById('nickname').value.trim();
+        const pwInput = document.getElementById('password').value.trim();
+
+        if (!idInput || idInput.length > 10) {
+            alert("아이디를 10자 이내로 입력해주세요!");
+            return;
+        }
+        if (!/^\d{4}$/.test(pwInput)) {
+            alert("비밀번호는 숫자 4자리로 입력해주세요!");
+            return;
+        }
+
+        if (!initializeFirebase()) return;
+
+        try {
+            const userRef = db.collection("users").doc(idInput);
+            const doc = await userRef.get();
+
+            if (doc.exists()) {
+                if (doc.data().pw === pwInput) {
+                    userNickname = idInput;
+                    startGame();
+                } else {
+                    alert("비밀번호가 틀렸습니다!");
+                }
+            } else {
+                if (confirm("새로운 아이디입니다. 입력하신 숫자 4자리를 비밀번호로 설정하여 가입할까요?")) {
+                    await userRef.set({
+                        id: idInput,
+                        pw: pwInput,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    userNickname = idInput;
+                    startGame();
+                }
+            }
+        } catch (e) {
+            console.error("인증 중 오류:", e);
+            alert("연결 오류가 발생했습니다.");
+        }
+    }
+
     function startGame() {
         const targetData = window.masterData || (typeof masterData !== 'undefined' ? masterData : null);
         if (!targetData || targetData.length === 0) {
             alert("한자 데이터(data.js)를 찾을 수 없습니다.");
             return;
         }
-        const nicknameInput = document.getElementById('nickname').value.trim();
-        if (!nicknameInput) {
-            alert("닉네임을 입력해주세요!");
-            return;
-        }
-        userNickname = nicknameInput.substring(0, 10);
+        
         const shuffled = [...targetData].sort(() => Math.random() - 0.5);
         currentQuestions = shuffled.slice(0, problemCount).map(q => ({
             ...q, displayType: Math.random() < 0.5 ? 'kanji' : 'reading'
