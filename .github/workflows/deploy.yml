@@ -11,17 +11,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # sed 대신 파일 내용을 통째로 새로 작성하여 특수문자 문제를 해결합니다.
       - name: Create Firebase Config
         run: |
           cat <<EOF > firebase-config.js
           var firebaseConfig = {
-            apiKey: '${{ secrets.FIREBASE_API_KEY }}',
-            authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
-            projectId: '${{ secrets.FIREBASE_PROJECT_ID }}',
-            storageBucket: '${{ secrets.FIREBASE_PROJECT_ID }}.appspot.com',
-            messagingSenderId: '235936270485',
-            appId: '${{ secrets.FIREBASE_APP_ID }}'
+            apiKey: "${{ secrets.FIREBASE_API_KEY }}",
+            authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+            projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
+            storageBucket: "${{ secrets.FIREBASE_PROJECT_ID }}.appspot.com",
+            messagingSenderId: "235936270485",
+            appId: "${{ secrets.FIREBASE_APP_ID }}"
           };
           EOF
 
