@@ -30,51 +30,70 @@
             return false;
         }
 
-// 아이디/비밀번호 인증 후 게임 시작
-async function authAndStart() {
-    const idInput = document.getElementById('nickname').value.trim();
-    const pwInput = document.getElementById('password').value.trim();
+        // 닉네임 리스트 업데이트 (ReferenceError 방지를 위해 onload 위로 이동)
+        async function updateNicknameDatalist() {
+            if (!initializeFirebase()) return;
+            try {
+                const snapshot = await db.collection("hanja_history").get();
+                const names = [...new Set(snapshot.docs.map(doc => doc.data().name))];
+                const datalist = document.getElementById('nickname-list');
+                if (datalist) {
+                    datalist.innerHTML = '';
+                    names.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        datalist.appendChild(opt);
+                    });
+                }
+            } catch (e) { console.error("리스트 업데이트 실패:", e); }
+        }
 
-    if (!idInput || idInput.length > 10) {
-        alert("아이디를 10자 이내로 입력해주세요!");
-        return;
-    }
-    if (!/^\d{4}$/.test(pwInput)) {
-        alert("비밀번호는 숫자 4자리로 입력해주세요!");
-        return;
-    }
+        // 아이디/비밀번호 인증 후 게임 시작
+        async function authAndStart() {
+            const idInput = document.getElementById('nickname').value.trim();
+            const pwInput = document.getElementById('password').value.trim();
 
-    if (!initializeFirebase()) return;
-
-    try {
-        const userRef = db.collection("users").doc(idInput);
-        const doc = await userRef.get();
-
-        // [수정 포인트] .exists() 함수가 아니라 .exists 속성입니다.
-        if (doc.exists) { 
-            const userData = doc.data(); // .data()는 함수가 맞습니다.
-            if (userData.pw === pwInput) {
-                userNickname = idInput;
-                startGame();
-            } else {
-                alert("비밀번호가 틀렸습니다!");
+            if (!idInput || idInput.length > 10) {
+                alert("아이디를 10자 이내로 입력해주세요!");
+                return;
             }
-        } else {
-            if (confirm("새로운 아이디입니다. 입력하신 숫자 4자리를 비밀번호로 설정하여 가입할까요?")) {
-                await userRef.set({
-                    id: idInput,
-                    pw: pwInput,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                userNickname = idInput;
-                startGame();
+            if (!/^\d{4}$/.test(pwInput)) {
+                alert("비밀번호는 숫자 4자리로 입력해주세요!");
+                return;
+            }
+
+            if (!initializeFirebase()) return;
+
+            try {
+                const userRef = db.collection("users").doc(idInput);
+                const doc = await userRef.get();
+
+                // [수정] .exists() -> .exists (Compat 버전 속성 방식)
+                if (doc.exists) { 
+                    const userData = doc.data(); 
+                    if (userData.pw === pwInput) {
+                        userNickname = idInput;
+                        startGame();
+                    } else {
+                        alert("비밀번호가 틀렸습니다!");
+                    }
+                } else {
+                    if (confirm("새로운 아이디입니다. 입력하신 숫자 4자리를 비밀번호로 설정하여 가입할까요?")) {
+                        await userRef.set({
+                            id: idInput,
+                            pw: pwInput,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        userNickname = idInput;
+                        startGame();
+                    }
+                }
+            } catch (e) {
+                console.error("인증 중 오류:", e);
+                alert("연결 오류가 발생했습니다.");
             }
         }
-    } catch (e) {
-        console.error("인증 중 오류:", e);
-        alert("연결 오류가 발생했습니다.");
-    }
-}
+
         window.onload = async function() {
             // Firebase가 준비될 때까지 최대 3초 대기
             let retry = 0;
@@ -380,50 +399,6 @@ async function authAndStart() {
     let isEditing = false;
     let initialTotalCount = 0;
 
-    // 아이디/비밀번호 인증 후 게임 시작
-    async function authAndStart() {
-        const idInput = document.getElementById('nickname').value.trim();
-        const pwInput = document.getElementById('password').value.trim();
-
-        if (!idInput || idInput.length > 10) {
-            alert("아이디를 10자 이내로 입력해주세요!");
-            return;
-        }
-        if (!/^\d{4}$/.test(pwInput)) {
-            alert("비밀번호는 숫자 4자리로 입력해주세요!");
-            return;
-        }
-
-        if (!initializeFirebase()) return;
-
-        try {
-            const userRef = db.collection("users").doc(idInput);
-            const doc = await userRef.get();
-
-            if (doc.exists()) {
-                if (doc.data().pw === pwInput) {
-                    userNickname = idInput;
-                    startGame();
-                } else {
-                    alert("비밀번호가 틀렸습니다!");
-                }
-            } else {
-                if (confirm("새로운 아이디입니다. 입력하신 숫자 4자리를 비밀번호로 설정하여 가입할까요?")) {
-                    await userRef.set({
-                        id: idInput,
-                        pw: pwInput,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    userNickname = idInput;
-                    startGame();
-                }
-            }
-        } catch (e) {
-            console.error("인증 중 오류:", e);
-            alert("연결 오류가 발생했습니다.");
-        }
-    }
-
     function startGame() {
         const targetData = window.masterData || (typeof masterData !== 'undefined' ? masterData : null);
         if (!targetData || targetData.length === 0) {
@@ -680,4 +655,3 @@ async function authAndStart() {
 </script>
 </body>
 </html>
-
