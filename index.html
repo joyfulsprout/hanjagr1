@@ -26,17 +26,27 @@
         return false;
     }
 
-    window.onload = function() {
-        // 창이 떴을 때 한 번 더 초기화 시도
-        if (initializeFirebase()) {
-            // db가 정상일 때만 닉네임 리스트 업데이트
-            if (typeof updateNicknameDatalist === 'function') {
-                updateNicknameDatalist();
-            }
-        } else {
-            console.warn("Firebase 설정 로드 실패. Secrets 설정을 확인하세요.");
+window.onload = async function() {
+    // 1. Firebase 초기화 함수 호출
+    initializeFirebase();
+
+    // 2. db가 생성될 때까지 최대 2초간 대기 (초기화 지연 대비)
+    let retryCount = 0;
+    while (!db && retryCount < 10) {
+        await new Promise(resolve => setTimeout(resolve, 200)); // 0.2초씩 대기
+        retryCount++;
+    }
+
+    // 3. db가 확인되면 함수 실행
+    if (db) {
+        console.log("Firestore 준비 완료, 데이터를 불러옵니다.");
+        if (typeof updateNicknameDatalist === 'function') {
+            updateNicknameDatalist();
         }
-    };
+    } else {
+        console.error("Firebase 초기화 실패 또는 설정 오류로 데이터를 불러올 수 없습니다.");
+    }
+};
 </script>
 
     <meta charset="UTF-8">
@@ -607,6 +617,7 @@
 </body>
 
 </html>
+
 
 
 
