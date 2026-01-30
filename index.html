@@ -1,73 +1,72 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-	
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="./firebase-config.js"></script>
-
-<script>
-    var db;
-
-    // 1. Firebase 초기화 함수
-    function initializeFirebase() {
-        try {
-            if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey) {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                db = firebase.firestore();
-                console.log("Firebase 연결 성공!");
-                return true;
-            }
-        } catch (e) {
-            console.error("Firebase 초기화 에러:", e.message);
-        }
-        return false;
-    }
-
-    // 2. 문제의 함수: 내부에서 db 존재 여부를 한 번 더 확인 (이중 잠금)
-    async function updateNicknameDatalist() {
-        // db가 없으면 에러를 내지 않고 조용히 리턴하거나 재시도합니다.
-        if (!db) {
-            console.warn("updateNicknameDatalist: db가 아직 준비되지 않았습니다.");
-            return; 
-        }
-
-        try {
-            // 이 지점에서 db.collection을 읽을 때 db가 undefined면 에러가 납니다.
-            const querySnapshot = await db.collection("users").get(); 
-            // ... (기존의 닉네임 리스트 업데이트 로직) ...
-            console.log("데이터 로드 성공");
-        } catch (error) {
-            console.error("데이터 불러오기 중 오류:", error);
-        }
-    }
-
-    // 3. 실행부: 대기 로직 포함
-    window.onload = async function() {
-        initializeFirebase();
-
-        let retryCount = 0;
-        // db가 생길 때까지 최대 2초(200ms * 10) 대기
-        while (!db && retryCount < 10) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-            retryCount++;
-        }
-
-        if (db) {
-            if (typeof updateNicknameDatalist === 'function') {
-                updateNicknameDatalist();
-            }
-        } else {
-            console.error("Firebase 초기화 실패: 설정값을 확인하거나 GitHub Actions 배포 로그를 점검하세요.");
-        }
-    };
-</script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>동글동글 새싹 한자방</title>
+
+    <script src="./firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        var db;
+
+        // Firebase 초기화 함수 (성공 여부 반환)
+        function initializeFirebase() {
+            if (db) return true; 
+            try {
+                if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey) {
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                    }
+                    db = firebase.firestore();
+                    console.log("🔥 Firebase 연결 성공!");
+                    return true;
+                }
+            } catch (e) {
+                console.error("Firebase 초기화 에러:", e.message);
+            }
+            return false;
+        }
+
+        // 닉네임 리스트 업데이트
+        async function updateNicknameDatalist() {
+            if (!initializeFirebase()) return;
+            try {
+                const snapshot = await db.collection("hanja_history").get();
+                const names = [...new Set(snapshot.docs.map(doc => doc.data().name))];
+                const datalist = document.getElementById('nickname-list');
+                if (datalist) {
+                    datalist.innerHTML = '';
+                    names.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        datalist.appendChild(opt);
+                    });
+                }
+            } catch (e) { console.error("리스트 업데이트 실패:", e); }
+        }
+
+        window.onload = async function() {
+            // Firebase가 준비될 때까지 최대 3초 대기
+            let retry = 0;
+            while (!window.firebaseConfig && retry < 15) {
+                await new Promise(res => setTimeout(res, 200));
+                retry++;
+            }
+            
+            initializeFirebase();
+            updateNicknameDatalist();
+
+            if (typeof gameHistoryText !== 'undefined' && document.getElementById('history-content-text')) {
+                document.getElementById('history-content-text').innerText = gameHistoryText;
+            } else if (document.getElementById('history-content-text')) {
+                document.getElementById('history-content-text').innerText = "기록을 불러올 수 없습니다.";
+            }
+        };
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
 
@@ -82,7 +81,6 @@
             --chalk-aqua: #a2d9ce;
             --prev-btn-bg: #ffb74d;
             --prev-btn-dark: #f57c00;
-            /* 파스텔톤 버튼 색상 정의 */
             --start-btn-bg: #a1d6e2; /* 파스텔 하늘 */
             --start-btn-dark: #7fbbc9;
             --best-btn-bg: #f4c2c2; /* 파스텔 분홍 */
@@ -117,13 +115,12 @@
             box-sizing: border-box;
         }
 
-        /* Ver 표시용 스타일 */
         .ver-info {
             position: absolute;
             top: 20px;
             right: 30px;
             color: var(--chalk-white);
-            font-family: sans-serif; /* 고딕체 */
+            font-family: sans-serif;
             font-size: calc(1rem - 3pt);
             opacity: 0.8;
         }
@@ -144,19 +141,17 @@
             text-align: center;
         }
 
-        /* 변경사항 출력용 스타일 */
         .history-info {
             margin-top: 40px;
             color: var(--chalk-white);
-            font-family: sans-serif; /* 고딕체 */
+            font-family: sans-serif;
             font-size: calc(1rem - 3pt);
             line-height: 1.4;
         }
-	/* 제목과 내용 사이의 특정 간격 추가 */
-	.history-info div:first-child {
-	    margin-bottom: 12px; /* 이 숫자를 키울수록 간격이 넓어집니다 */
-	    font-weight: bold;
-	}
+        .history-info div:first-child {
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
 
         .kanji-display {
             font-size: 4.5rem;
@@ -355,28 +350,6 @@
     let isEditing = false;
     let initialTotalCount = 0;
 
-    window.onload = function() {
-        updateNicknameDatalist();
-        if (typeof gameHistoryText !== 'undefined') {
-            document.getElementById('history-content-text').innerText = gameHistoryText;
-        } else {
-            document.getElementById('history-content-text').innerText = "기록을 불러올 수 없습니다.";
-        }
-    };
-
-    // Firebase를 사용하여 닉네임 리스트 업데이트
-    async function updateNicknameDatalist() {
-        const snapshot = await db.collection("hanja_history").get();
-        const names = [...new Set(snapshot.docs.map(doc => doc.data().name))];
-        const datalist = document.getElementById('nickname-list');
-        datalist.innerHTML = '';
-        names.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            datalist.appendChild(opt);
-        });
-    }
-
     function startGame() {
         const targetData = window.masterData || (typeof masterData !== 'undefined' ? masterData : null);
         if (!targetData || targetData.length === 0) {
@@ -521,27 +494,33 @@
     }
 
     async function showResult() {
+        if (!db) initializeFirebase(); // 저장 전 마지막 연결 시도
+        if (!db) { alert("Firebase가 연결되지 않아 기록을 저장할 수 없습니다."); return; }
+        
         showScreen('screen-result');
         const week = getWeekInfo(new Date());
         
-        // Firebase에서 주간 누적 데이터 계산
-        const snapshot = await db.collection("hanja_history")
-                                 .where("name", "==", userNickname)
-                                 .where("weekId", "==", week.id)
-                                 .get();
-        
-        let weekTotal = initialTotalCount;
-        snapshot.forEach(doc => { weekTotal += doc.data().total; });
-        
-        document.getElementById('user-result-msg').innerText = `${userNickname}님은 이번 판에 총 ${initialTotalCount}문제, 이번 주에 총 ${weekTotal}문제를 풀었습니다!`;
-        document.getElementById('final-score').innerText = `${initialTotalCount} / ${initialTotalCount}`;
-        document.getElementById('result-status-msg').innerText = "만점입니다! 정말 대단해요!";
-        
-        saveRecord(initialTotalCount, initialTotalCount);
-        updateNicknameDatalist();
+        try {
+            const snapshot = await db.collection("hanja_history")
+                                     .where("name", "==", userNickname)
+                                     .where("weekId", "==", week.id)
+                                     .get();
+            
+            let weekTotal = initialTotalCount;
+            snapshot.forEach(doc => { weekTotal += doc.data().total; });
+            
+            document.getElementById('user-result-msg').innerText = `${userNickname}님은 이번 판에 총 ${initialTotalCount}문제, 이번 주에 총 ${weekTotal}문제를 풀었습니다!`;
+            document.getElementById('final-score').innerText = `${initialTotalCount} / ${initialTotalCount}`;
+            document.getElementById('result-status-msg').innerText = "만점입니다! 정말 대단해요!";
+            
+            saveRecord(initialTotalCount, initialTotalCount);
+            updateNicknameDatalist();
+        } catch(e) { console.error(e); }
     }
 
     async function saveRecord(score, total) {
+        if (!db) initializeFirebase();
+        if (!db) return;
         const now = new Date();
         const week = getWeekInfo(now);
         
@@ -557,6 +536,8 @@
     }
 
     async function showHistory() {
+        if (!db) initializeFirebase();
+        if (!db) { alert("데이터를 불러오는 중입니다. 잠시만 기다려주세요."); return; }
         showScreen('screen-history');
         document.getElementById('history-title').innerText = "이번 주의 모범생";
         document.getElementById('btn-prev-history').style.display = 'block';
@@ -565,7 +546,6 @@
         const week = getWeekInfo(new Date());
         document.getElementById('current-week-display').innerText = `${week.year}년 ${week.week}주차 (${week.range})`;
 
-        // Firebase에서 현재 주차 데이터만 가져오기
         const snapshot = await db.collection("hanja_history").where("weekId", "==", week.id).get();
         
         const summary = {};
@@ -592,9 +572,9 @@
     }
 
     async function showPreviousHistory() {
+        if (!db) initializeFirebase();
+        if (!db) return;
         const currentWeek = getWeekInfo(new Date());
-        
-        // Firebase에서 현재 주차를 제외한 모든 데이터 가져오기
         const snapshot = await db.collection("hanja_history").orderBy("timestamp", "desc").get();
         const allHistory = snapshot.docs.map(doc => doc.data()).filter(item => item.weekId !== currentWeek.id);
 
@@ -628,16 +608,6 @@
     }
 
     function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
-    function retryWrong() { processReview(); }
 </script>
 </body>
-
 </html>
-
-
-
-
-
-
-
-
