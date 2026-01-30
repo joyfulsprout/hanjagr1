@@ -9,7 +9,7 @@
 <script>
     var db;
 
-    // Firebase를 초기화하는 함수를 별도로 만듭니다.
+    // 1. Firebase 초기화 함수
     function initializeFirebase() {
         try {
             if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey) {
@@ -26,27 +26,43 @@
         return false;
     }
 
-window.onload = async function() {
-    // 1. Firebase 초기화 함수 호출
-    initializeFirebase();
-
-    // 2. db가 생성될 때까지 최대 2초간 대기 (초기화 지연 대비)
-    let retryCount = 0;
-    while (!db && retryCount < 10) {
-        await new Promise(resolve => setTimeout(resolve, 200)); // 0.2초씩 대기
-        retryCount++;
-    }
-
-    // 3. db가 확인되면 함수 실행
-    if (db) {
-        console.log("Firestore 준비 완료, 데이터를 불러옵니다.");
-        if (typeof updateNicknameDatalist === 'function') {
-            updateNicknameDatalist();
+    // 2. 문제의 함수: 내부에서 db 존재 여부를 한 번 더 확인 (이중 잠금)
+    async function updateNicknameDatalist() {
+        // db가 없으면 에러를 내지 않고 조용히 리턴하거나 재시도합니다.
+        if (!db) {
+            console.warn("updateNicknameDatalist: db가 아직 준비되지 않았습니다.");
+            return; 
         }
-    } else {
-        console.error("Firebase 초기화 실패 또는 설정 오류로 데이터를 불러올 수 없습니다.");
+
+        try {
+            // 이 지점에서 db.collection을 읽을 때 db가 undefined면 에러가 납니다.
+            const querySnapshot = await db.collection("users").get(); 
+            // ... (기존의 닉네임 리스트 업데이트 로직) ...
+            console.log("데이터 로드 성공");
+        } catch (error) {
+            console.error("데이터 불러오기 중 오류:", error);
+        }
     }
-};
+
+    // 3. 실행부: 대기 로직 포함
+    window.onload = async function() {
+        initializeFirebase();
+
+        let retryCount = 0;
+        // db가 생길 때까지 최대 2초(200ms * 10) 대기
+        while (!db && retryCount < 10) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            retryCount++;
+        }
+
+        if (db) {
+            if (typeof updateNicknameDatalist === 'function') {
+                updateNicknameDatalist();
+            }
+        } else {
+            console.error("Firebase 초기화 실패: 설정값을 확인하거나 GitHub Actions 배포 로그를 점검하세요.");
+        }
+    };
 </script>
 
     <meta charset="UTF-8">
@@ -617,6 +633,7 @@ window.onload = async function() {
 </body>
 
 </html>
+
 
 
 
