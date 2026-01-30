@@ -5,6 +5,6 @@ var firebaseConfig = {
   authDomain: 'hanja-gr1.firebaseapp.com',
   projectId: 'hanja-gr1',
   storageBucket: 'hanja-gr1.appspot.com',
-  messagingSenderId: '본인의숫자ID',
+  messagingSenderId: '235936270485',
   appId: 'G-HR4BYJ7N9Q'
 };
