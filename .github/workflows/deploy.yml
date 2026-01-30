@@ -20,7 +20,7 @@ jobs:
             authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
             projectId: '${{ secrets.FIREBASE_PROJECT_ID }}',
             storageBucket: '${{ secrets.FIREBASE_PROJECT_ID }}.appspot.com',
-            messagingSenderId: '본인의숫자ID',
+            messagingSenderId: '235936270485',
             appId: '${{ secrets.FIREBASE_APP_ID }}'
           };
           EOF
