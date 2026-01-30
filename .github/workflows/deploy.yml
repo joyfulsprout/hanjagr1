@@ -13,12 +13,14 @@ jobs:
 
       - name: Create Firebase Config
         run: |
-          printf 'var firebaseConfig = {\n  apiKey: "%s",\n  authDomain: "%s",\n  projectId: "%s",\n  storageBucket: "%s.appspot.com",\n  messagingSenderId: "235936270485",\n  appId: "%s"\n};' \
-          "${{ secrets.FIREBASE_API_KEY }}" \
-          "${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
-          "${{ secrets.FIREBASE_PROJECT_ID }}" \
-          "${{ secrets.FIREBASE_PROJECT_ID }}" \
-          "${{ secrets.FIREBASE_APP_ID }}" > firebase-config.js
+          echo "var firebaseConfig = {" > firebase-config.js
+          echo "  apiKey: '${{ secrets.FIREBASE_API_KEY }}'," >> firebase-config.js
+          echo "  authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}'," >> firebase-config.js
+          echo "  projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'," >> firebase-config.js
+          echo "  storageBucket: '${{ secrets.FIREBASE_PROJECT_ID }}.appspot.com'," >> firebase-config.js
+          echo "  messagingSenderId: '235936270485'," >> firebase-config.js
+          echo "  appId: '${{ secrets.FIREBASE_APP_ID }}'" >> firebase-config.js
+          echo "};" >> firebase-config.js
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
