@@ -12,3 +12,6 @@ const historyData = [
 // 배열의 내용을 줄바꿈(\n)으로 합쳐서 하나의 텍스트로 만듭니다.
 
 const gameHistoryText = historyData.join('\n');
+
+document.querySelector('.ver-info').innerText = `Ver.${historyData[0].split(']')[0].replace('[', '')}`;
+document.getElementById('history-content-text').innerText = gameHistoryText;
